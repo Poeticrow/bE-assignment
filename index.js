@@ -9,7 +9,7 @@ const Products = require("./models/productModel");
 const app = express();
 app.use(express.json());
 connectDB();
-dotenv.config({});
+dotenv.config();
 
 const port = process.env.PORT || 8080;
 
