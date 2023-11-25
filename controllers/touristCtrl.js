@@ -28,6 +28,7 @@ const touristSignUp = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+
     // GEnerate random characters
     function generateRandomCharacters(length) {
       const characters =
@@ -44,6 +45,7 @@ const touristSignUp = async (req, res) => {
 
     // END: GENERATE
     const passkey = generateRandomCharacters(6);
+    const hashedPasskey = await bcrypt.hash(passkey, 12);
 
     const newTourist = new Tourists({
       name,
@@ -51,7 +53,7 @@ const touristSignUp = async (req, res) => {
       password: hashedPassword,
       tourLocation,
       location,
-      passkey,
+      passkey: hashedPasskey,
     });
 
     await newTourist.save();
@@ -59,6 +61,10 @@ const touristSignUp = async (req, res) => {
     return res.status(200).json({
       mesasge: "Registration successful",
       student: newTourist,
+      Userpasskey: {
+        Message: "User should use this passkey to login. Do not lose it",
+        passkey,
+      },
     });
   } catch (err) {
     return res.status(500).json({ msg: err.message });
@@ -66,42 +72,49 @@ const touristSignUp = async (req, res) => {
 };
 
 const touristLogin = async (req, res) => {
-  try {
-    const { passkey } = req.body;
+  //   try {
+  const { passkey } = req.body;
+  console.log(passkey);
 
-    const alreadyExisiting = await Tourists.findOne({ passkey });
+  const alreadyExisiting = await Tourists.findOne({ passkey });
 
-    if (!alreadyExisiting) {
-      return res.status(404).json({ message: "This user does not exist!" });
-    }
+  const isMatch = await bcrypt.compare(passkey, alreadyExisiting.passkey);
 
-    const payload = {
-      id: alreadyExisiting._id,
-      passkey,
-    };
-
-    const activeToken = await jwt.sign(payload, process.env.TOKEN, {
-      expiresIn: "5h",
-    });
-    const accessToken = await jwt.sign(payload, process.env.TOKEN, {
-      expiresIn: "3m",
-    });
-    const refreshToken = await jwt.sign(payload, process.env.TOKEN, {
-      expiresIn: "3d",
-    });
-
-    alreadyExisiting.refreshToken = refreshToken;
-
-    await alreadyExisiting.save();
-
-    return res.status(200).json({
-      message: "Login successful",
-      accessToken,
-      user: alreadyExisiting,
-    });
-  } catch (err) {
-    return res.status(500).json({ msg: err.message });
+  if (!alreadyExisiting) {
+    return res.status(404).json({ message: "This user does not exist!" });
   }
+
+  if (!isMatch) {
+    return res.status(400).json({ message: "Incorrect email or password!" });
+  }
+
+  const payload = {
+    id: alreadyExisiting._id,
+    passkey,
+  };
+
+  const activeToken = await jwt.sign(payload, process.env.TOKEN, {
+    expiresIn: "5h",
+  });
+  const accessToken = await jwt.sign(payload, process.env.TOKEN, {
+    expiresIn: "3m",
+  });
+  const refreshToken = await jwt.sign(payload, process.env.TOKEN, {
+    expiresIn: "3d",
+  });
+
+  alreadyExisiting.refreshToken = refreshToken;
+
+  await alreadyExisiting.save();
+
+  return res.status(200).json({
+    message: "Login successful",
+    accessToken,
+    user: alreadyExisiting,
+  });
+  //   } catch (err) {
+  //     return res.status(500).json({ msg: err.message });
+  //   }
 };
 
 module.exports = {

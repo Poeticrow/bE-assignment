@@ -12,11 +12,15 @@ const router = express.Router();
 router.get("/all-tourists", getAllTourists);
 
 router.post(
-  "/register",
+  "/tourists/register",
   touristValidation.validateTouristSignUp,
   touristSignUp
 );
 
-router.post("/login", touristValidation.validateTouristLogin, touristLogin);
+router.post(
+  "/tourists/login",
+  touristValidation.validateTouristLogin,
+  touristLogin
+);
 
 module.exports = router;
