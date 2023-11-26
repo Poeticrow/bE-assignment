@@ -72,49 +72,48 @@ const touristSignUp = async (req, res) => {
 };
 
 const touristLogin = async (req, res) => {
-  //   try {
-  const { passkey } = req.body;
-  console.log(passkey);
+  try {
+    const { passkey, email } = req.body;
 
-  const alreadyExisiting = await Tourists.findOne({ passkey });
+    const alreadyExisiting = await Tourists.findOne({ email });
 
-  const isMatch = await bcrypt.compare(passkey, alreadyExisiting.passkey);
+    const isMatch = await bcrypt.compare(passkey, alreadyExisiting.passkey);
 
-  if (!alreadyExisiting) {
-    return res.status(404).json({ message: "This user does not exist!" });
+    if (!alreadyExisiting) {
+      return res.status(404).json({ message: "This user does not exist!" });
+    }
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Incorrect email or passkey!" });
+    }
+
+    const payload = {
+      id: alreadyExisiting._id,
+      passkey,
+    };
+
+    const activeToken = await jwt.sign(payload, process.env.TOKEN, {
+      expiresIn: "5h",
+    });
+    const accessToken = await jwt.sign(payload, process.env.TOKEN, {
+      expiresIn: "3m",
+    });
+    const refreshToken = await jwt.sign(payload, process.env.TOKEN, {
+      expiresIn: "3d",
+    });
+
+    alreadyExisiting.refreshToken = refreshToken;
+
+    await alreadyExisiting.save();
+
+    return res.status(200).json({
+      message: "Login successful",
+      accessToken,
+      user: alreadyExisiting,
+    });
+  } catch (err) {
+    return res.status(500).json({ msg: err.message });
   }
-
-  if (!isMatch) {
-    return res.status(400).json({ message: "Incorrect email or password!" });
-  }
-
-  const payload = {
-    id: alreadyExisiting._id,
-    passkey,
-  };
-
-  const activeToken = await jwt.sign(payload, process.env.TOKEN, {
-    expiresIn: "5h",
-  });
-  const accessToken = await jwt.sign(payload, process.env.TOKEN, {
-    expiresIn: "3m",
-  });
-  const refreshToken = await jwt.sign(payload, process.env.TOKEN, {
-    expiresIn: "3d",
-  });
-
-  alreadyExisiting.refreshToken = refreshToken;
-
-  await alreadyExisiting.save();
-
-  return res.status(200).json({
-    message: "Login successful",
-    accessToken,
-    user: alreadyExisiting,
-  });
-  //   } catch (err) {
-  //     return res.status(500).json({ msg: err.message });
-  //   }
 };
 
 module.exports = {
